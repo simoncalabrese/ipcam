@@ -2,11 +2,14 @@ package app;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
+import java.util.stream.Collectors;
 
 import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_DELETE;
@@ -19,10 +22,23 @@ public class Watch {
 
     private final WatchService watcher;
     private final Map<WatchKey,Path> keys;
+    private static final Map<String,String> properties = new HashMap<>();
+    static {
+        Properties prop = new Properties();
+        try {
+            prop.load(Watch.class.getClassLoader().getResourceAsStream("ipcam.properties"));
+        } catch (IOException e) {
+            //
+        }
+        properties.putAll(prop.stringPropertyNames()
+                .stream()
+                .collect(Collectors.toMap(e -> e, prop::getProperty)));
+    }
 
     public Watch() throws IOException {
         this.watcher = FileSystems.getDefault().newWatchService();
         this.keys = new HashMap<>();
+        walkAndRegisterDirectories(Paths.get(properties.get("srcPath")));
     }
 
     private void walkAndRegisterDirectories(final Path path) throws IOException {
@@ -38,7 +54,6 @@ public class Watch {
 
     @SuppressWarnings("unchecked")
     public void process() throws IOException {
-        walkAndRegisterDirectories(Paths.get("C:\\Users\\simon.calabrese\\Desktop\\conte"));
         while (true) {
             WatchKey key;
             try {
@@ -53,7 +68,7 @@ public class Watch {
                     /*if(!Files.exists(name)) {
                         Files.createDirectory(Paths.get("C:\\Users\\simon.calabrese\\Desktop\\conte1"));
                     }*/
-                    Files.copy(name,Paths.get("C:\\Users\\simon.calabrese\\Desktop\\conte1"));
+                    Files.copy(name,Paths.get(properties.get("destPath")));
                 } catch (IOException e) {
                     break;
                 }
